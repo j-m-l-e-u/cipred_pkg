@@ -1,6 +1,6 @@
 [project]
 name = "cipred"
-version = "0.1"
+version = "0.1-beta"
 authors = [
   { name="Jean-Marie Lepioufle", email="jm@jeanmarie.eu" },
 ]

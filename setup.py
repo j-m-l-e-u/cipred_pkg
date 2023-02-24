@@ -14,7 +14,7 @@ if os.path.isfile(requirementPath):
 
 setup(
     name='cipred',
-    version='0.1',
+    version='0.1-beta',
     author="Jean-Marie Lepioufle",
     author_email="jm@jeanmarie.eu",
     packages=[
