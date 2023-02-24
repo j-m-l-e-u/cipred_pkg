@@ -1,0 +1,20 @@
+[project]
+name = "cipred"
+version = "0.1"
+authors = [
+  { name="Jean-Marie Lepioufle", email="jm@jeanmarie.eu" },
+]
+description = "Non-parametric error prediction with random forest model."
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text='MIT + Copyright Jean-Marie Lepioufle'}
+classifiers = [
+    "Programming Language :: Python :: 3"
+]
+dependencies = [
+  "pandas~=1.2.5",
+  "scikit-learn~=1.2.1"
+]
+
+[project.urls]
+"Homepage" = "https://github.com/j-m-l-e-u/cipred_pkg"
