@@ -28,3 +28,4 @@ setup(
     extras_require={
         "examples": ["ipython", "jupyter", "os", "matplotlib","pandas","pyarrow"],
     })
+    

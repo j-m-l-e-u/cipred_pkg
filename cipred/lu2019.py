@@ -2,6 +2,7 @@ import polars as pl
 import numpy as np
 from sklearn.ensemble._forest import _get_n_samples_bootstrap,_generate_sample_indices
 
+
 def lu_fit(forest,X,y):
     '''
     The function builds a Random Forest with its {tree,terminal node} OOB errors.
