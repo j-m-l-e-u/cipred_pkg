@@ -16,6 +16,7 @@ dependencies = [
   "numpy~=1.22.4",
   "scikit-learn~=1.2.1"
 ]
+
 [project.optional-dependencies]
 example = [
   "ipython",

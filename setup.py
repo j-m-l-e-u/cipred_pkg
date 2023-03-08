@@ -12,6 +12,7 @@ if os.path.isfile(requirementPath):
     with open(requirementPath) as f:
         install_requires = f.read().splitlines()
 
+
 setup(
     name='cipred',
     version='0.2-b',
@@ -28,4 +29,3 @@ setup(
     extras_require={
         "examples": ["ipython", "jupyter", "os", "matplotlib","pandas","pyarrow"],
     })
-    
