@@ -14,10 +14,10 @@ pip install cipred
 cd /tmp
 git clone https://github.com/j-m-l-e-u/cipred_pkg.git
 cd cipred_pkg
-pip3 install -e .
+pip3 install .
 ```
 
-Package 'cipred' has been tested on python 3.8 and 3.9
+Package `cipred` has been tested on python 3.8 and 3.9
 
 ## References
 
