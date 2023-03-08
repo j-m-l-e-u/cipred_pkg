@@ -14,7 +14,7 @@ if os.path.isfile(requirementPath):
 
 setup(
     name='cipred',
-    version='0.1-beta',
+    version='0.2-b',
     author="Jean-Marie Lepioufle",
     author_email="jm@jeanmarie.eu",
     packages=[
@@ -26,5 +26,5 @@ setup(
     python_requires='>=3.8',
     install_requires=install_requires,
     extras_require={
-        "examples": ["ipython", "jupyter", "os", "matplotlib"],
+        "examples": ["ipython", "jupyter", "os", "matplotlib","pandas","pyarrow"],
     })
