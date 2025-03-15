@@ -1,20 +1,20 @@
 [project]
 name = "cipred"
-version = "0.2-b"
+version = "0.3"
 authors = [
   { name="Jean-Marie Lepioufle", email="jm@jeanmarie.eu" },
 ]
 description = "Non-parametric error prediction with random forest model."
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 license = {text='MIT + Copyright Jean-Marie Lepioufle'}
 classifiers = [
     "Programming Language :: Python :: 3"
 ]
 dependencies = [
-  "polars~=0.16.9",
-  "numpy~=1.22.4",
-  "scikit-learn~=1.2.1"
+  "polars~=0.20.31",
+  "numpy~=1.23.2",
+  "scikit-learn~=1.2.2"
 ]
 
 [project.optional-dependencies]

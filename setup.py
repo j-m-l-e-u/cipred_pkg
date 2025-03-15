@@ -15,7 +15,7 @@ if os.path.isfile(requirementPath):
 
 setup(
     name='cipred',
-    version='0.2-b',
+    version='0.3',
     author="Jean-Marie Lepioufle",
     author_email="jm@jeanmarie.eu",
     packages=[
@@ -24,7 +24,7 @@ setup(
     description='Non-parametric error prediction with random forest model.',
     long_description = long_description,
     url="https://github.com/j-m-l-e-u/cipred_pkg",
-    python_requires='>=3.8',
+    python_requires='>=3.10',
     install_requires=install_requires,
     extras_require={
         "examples": ["ipython", "jupyter", "os", "matplotlib","pandas","pyarrow"],
