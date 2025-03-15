@@ -38,7 +38,7 @@ def lu_fit(forest,X,y):
 
     # keep Out Of Bag observations
     n_samples = X.shape[0]
-    n_trees = forest.get_params()['n_estimators']
+    # n_trees = forest.get_params()['n_estimators']
     for i, (tree) in enumerate(forest.estimators_):
         n_samples_bootstrap = _get_n_samples_bootstrap(n_samples,max_samples=None)
         sampled_indices = _generate_sample_indices(tree.random_state, n_samples,n_samples_bootstrap)
@@ -47,9 +47,16 @@ def lu_fit(forest,X,y):
     # melt the data frame to gather all the errors corresponding to identical pairs of {tree,terminal_node}
     df_oe = df_oe.melt(id_vars='oob_e',value_vars=colnames,variable_name='tree', value_name='terminal_node')
     df_oe = df_oe.drop_nulls()
-    df_oe = df_oe.groupby(['tree','terminal_node']).agg(pl.col("oob_e"))
+    df_oe = df_oe.group_by(['tree','terminal_node']).agg(pl.col("oob_e"))
+
+    if (forest.n_outputs_==1):
+        # !!find a better way
+        df_oe = df_oe.with_columns(
+            pl.col("oob_e").map_elements(lambda x: [x]).alias("oob_e")
+        )
 
     return forest, df_oe
+
 
 def lu_pred(forest,oob_error,X,alpha,keep_oob_error=False):
     '''
@@ -79,39 +86,86 @@ def lu_pred(forest,oob_error,X,alpha,keep_oob_error=False):
     # Apply trees in the forest to X, return leaf node indices
     terminal_nodes = forest.apply(X)
 
+
     # retrieve the oob_error given the sequence of the terminal nodes
     df_pe = pl.DataFrame(terminal_nodes)
-    df_pe_tmp = pl.DataFrame({
-                     'pred' : forest.predict(X),
-                     'id'   : np.arange(0,X.shape[0])})
+
+    if (forest.n_outputs_ == 1) : 
+        df_pe_tmp = pl.DataFrame({
+                        'pred' : forest.predict(X),
+                        'id'   : np.arange(0,X.shape[0])})
+    else:
+        df_pe_tmp = pl.DataFrame({
+                        'pred' : forest.predict(X),
+                        'id'   : np.arange(0,X.shape[0])})
 
     df_pe = pl.concat((df_pe,df_pe_tmp),how= 'horizontal')
 
+
     colnames = list(df_pe.columns)[0:forest.get_params()['n_estimators']]
+
 
     df_pe = df_pe.melt(id_vars=['id','pred'],value_vars=colnames,variable_name='tree', value_name='terminal_node')
 
-    df_pe = df_pe.join(oob_error,on = ['tree','terminal_node'], how="left")
+
+    for i in range(forest.n_outputs_):
+        oob_error = oob_error.with_columns([
+            pl.col("oob_e").list.eval(pl.element().list.get(i)).alias("oob_e_"+str(i))
+        ])
+
+    df_pe = df_pe.join(oob_error,on = ['tree','terminal_node'], how="left",coalesce=True)
+
 
     # some predictors use some terminal nodes that has never been used by a tree to provide a prediction
     # No OOB error is thus registered for this {tree,terminal node}. We remove these rows.
     df_pe = df_pe.drop_nulls()
 
-    # for each {id, prediction, obs} we gather the oob errors, and flatten the list.
-    df_pe = df_pe.groupby(['id','pred']).agg(pl.col("oob_e").flatten().sort())
 
-    df_pe = df_pe.sort("id")
+    # for each {id, prediction} we gather the oob errors, and flatten the list.
+    df_pe_grouped = df_pe.group_by(['id','pred']).agg(pl.col("oob_e_0").flatten().sort()).sort("id")
+
+    for i in range(1,forest.n_outputs_):
+        df_pe_tmp = df_pe.group_by(['id','pred']).agg(pl.col(f"oob_e_{i}").flatten().sort()).sort("id")
+        df_pe_grouped = df_pe_grouped.join(df_pe_tmp,on = ['id','pred'], how="left",coalesce=True)
+        
+
+    df_pe = df_pe_grouped.sort("id")
 
     p = [alpha/2,1-alpha/2]
 
-    df_pe = df_pe.with_columns(
-        pl.struct(["pred", "oob_e"]).apply(lambda x: x['pred'] + np.asarray(x['oob_e'])[np.floor(len(x['oob_e'])*p[0]).astype(np.int64)]).alias('N'+str(p[0])),
-        pl.struct(["pred", "oob_e"]).apply(lambda x: x['pred'] + np.asarray(x['oob_e'])[np.floor(len(x['oob_e'])*p[1]).astype(np.int64)]).alias('N'+str(p[1]))
-    )
+    if (forest.n_outputs_ ==1):
+        df_pe = df_pe.with_columns([
+            pl.col("pred").alias(f"pred_0"),
+        ])
+        
+    elif (forest.n_outputs_ >1):
+        for i in range(forest.n_outputs_):
+            df_pe = df_pe.with_columns([
+                pl.col("pred").list.get(i).alias(f"pred_{i}")
+            ])
+
+
+    for i in range(0,forest.n_outputs_):
+
+        df_pe = df_pe.with_columns(
+        (
+            pl.col(f"pred_{i}") + pl.col(f"oob_e_{i}").list.get(
+                    (pl.lit(df_pe[f"oob_e_{i}"].list.len()) * pl.lit(p[0])).floor().cast(pl.Int64)
+                )
+        ).alias(f"N_{i}_{p[0]}"),
+        (
+            pl.col(f"pred_{i}") + pl.col(f"oob_e_{i}").list.get(
+                    (pl.lit(df_pe[f"oob_e_{i}"].list.len()) * pl.lit(p[1])).floor().cast(pl.Int64)
+                )            
+        ).alias(f"N_{i}_{p[1]}")
+        )
+
 
     if (not keep_oob_error): df_pe = df_pe.drop('oob_e')
 
-    return df_pe
+
+    return df_pe.sort("id")
+
 
 def lu_pred_prime(forest,oob_error,X,y_obs,alpha,keep_oob_error=False):
     '''
@@ -148,38 +202,102 @@ def lu_pred_prime(forest,oob_error,X,y_obs,alpha,keep_oob_error=False):
     # Apply trees in the forest to X, return leaf node indices
     terminal_nodes = forest.apply(X)
 
+
     # retrieve the oob_error given the sequence of the terminal nodes
     df_pe = pl.DataFrame(terminal_nodes)
-    df_pe_tmp = pl.DataFrame({
-                     'pred' : forest.predict(X),
-                     'obs'  : np.ravel(y_obs),
-                     'id'   : np.arange(0,X.shape[0])})
+
+    if (forest.n_outputs_ == 1) : 
+        df_pe_tmp = pl.DataFrame({
+                        'pred' : forest.predict(X),
+                        'obs'  : np.ravel(y_obs),
+                        'id'   : np.arange(0,X.shape[0])})
+    else:
+        df_pe_tmp = pl.DataFrame({
+                        'pred' : forest.predict(X),
+                        'obs'  : y_obs,
+                        'id'   : np.arange(0,X.shape[0])})
 
     df_pe = pl.concat((df_pe,df_pe_tmp),how= 'horizontal')
 
+
     colnames = list(df_pe.columns)[0:forest.get_params()['n_estimators']]
+
 
     df_pe = df_pe.melt(id_vars=['id','pred','obs'],value_vars=colnames,variable_name='tree', value_name='terminal_node')
 
-    df_pe = df_pe.join(oob_error,on = ['tree','terminal_node'], how="left")
+
+    for i in range(forest.n_outputs_):
+        oob_error = oob_error.with_columns([
+            pl.col("oob_e").list.eval(pl.element().list.get(i)).alias("oob_e_"+str(i))
+        ])
+
+
+    df_pe = df_pe.join(oob_error,on = ['tree','terminal_node'], how="left",coalesce=True)
+
 
     # some predictors use some terminal nodes that has never been used by a tree to provide a prediction
     # No OOB error is thus registered for this {tree,terminal node}. We remove these rows.
     df_pe = df_pe.drop_nulls()
 
-    # for each {id, prediction, obs} we gather the oob errors, and flatten the list.
-    df_pe = df_pe.groupby(['id','pred','obs']).agg(pl.col("oob_e").flatten().sort())
 
-    df_pe = df_pe.sort("id")
+    # for each {id, prediction, obs} we gather the oob errors, and flatten the list.
+    df_pe_grouped = df_pe.group_by(['id','pred','obs']).agg(pl.col("oob_e_0").flatten().sort()).sort("id")
+
+    for i in range(1,forest.n_outputs_):
+        df_pe_tmp = df_pe.group_by(['id','pred','obs']).agg(pl.col(f"oob_e_{i}").flatten().sort()).sort("id")
+        df_pe_grouped = df_pe_grouped.join(df_pe_tmp,on = ['id','pred','obs'], how="left",coalesce=True)
+        
+
+    df_pe = df_pe_grouped.sort("id")
 
     p = [alpha/2,1-alpha/2]
 
-    df_pe = df_pe.with_columns(
-        pl.struct(["pred", "oob_e"]).apply(lambda x: x['pred'] + np.asarray(x['oob_e'])[np.floor(len(x['oob_e'])*p[0]).astype(np.int64)]).alias('N'+str(p[0])),
-        pl.struct(["pred", "oob_e"]).apply(lambda x: x['pred'] + np.asarray(x['oob_e'])[np.floor(len(x['oob_e'])*p[1]).astype(np.int64)]).alias('N'+str(p[1])),
-        pl.struct(["pred", "oob_e",'obs']).apply(lambda x: np.mean((x['pred']+np.asarray(x['oob_e']))<=x['obs'])).alias('p-value')
-    )
+    if (forest.n_outputs_ ==1):
+        df_pe = df_pe.with_columns([
+            pl.col("pred").alias(f"pred_0"),
+            pl.col("obs").alias(f"obs_0")
+        ])
+        
+    elif (forest.n_outputs_ >1):
+        for i in range(forest.n_outputs_):
+            df_pe = df_pe.with_columns([
+                pl.col("pred").list.get(i).alias(f"pred_{i}"),
+                pl.col("obs").list.get(i).alias(f"obs_{i}")
+            ])
+
+
+    for i in range(0,forest.n_outputs_):
+
+        # pure python API to be avoided, prefer rust API
+        # df_pe = df_pe.with_columns(
+        #     pl.struct(["pred_"+str(i), "oob_e_"+str(i)]).apply(lambda x: x["pred_"+str(i)] + np.asarray(x["oob_e_"+str(i)])[np.floor(len(x["oob_e_"+str(i)])*p[0]).astype(np.int64)]).alias("N_"+str(i)+"_"+str(p[0])),
+        #     pl.struct(["pred_"+str(i), "oob_e_"+str(i)]).apply(lambda x: x["pred_"+str(i)] + np.asarray(x["oob_e_"+str(i)])[np.floor(len(x["oob_e_"+str(i)])*p[1]).astype(np.int64)]).alias("N_"+str(i)+"_"+str(p[1])),
+        #     pl.struct(["pred_"+str(i), "oob_e_"+str(i),"obs_"+str(i)]).apply(lambda x: np.mean((x["pred_"+str(i)]+np.asarray(x["oob_e_"+str(i)]))<=x["obs_"+str(i)])).alias("p-value_"+str(i))
+        # )
+
+        df_pe = df_pe.with_columns(
+        (
+            pl.col(f"pred_{i}") + pl.col(f"oob_e_{i}").list.get(
+                    (pl.lit(df_pe[f"oob_e_{i}"].list.len()) * pl.lit(p[0])).floor().cast(pl.Int64)
+                )
+        ).alias(f"N_{i}_{p[0]}"),
+        (
+            pl.col(f"pred_{i}") + pl.col(f"oob_e_{i}").list.get(
+                    (pl.lit(df_pe[f"oob_e_{i}"].list.len()) * pl.lit(p[1])).floor().cast(pl.Int64)
+                )            
+        ).alias(f"N_{i}_{p[1]}")
+        )
+
+        # no possibility to run it w/ the rust API, so in pure python
+        df_pe = df_pe.with_columns(
+            pl.struct([f"pred_{i}", f"oob_e_{i}", f"obs_{i}"]).map_elements(
+                lambda x: np.mean((x[f"pred_{i}"] + np.asarray(x[f"oob_e_{i}"])) <= x[f"obs_{i}"]),
+                return_dtype=pl.Float64  # Specify the expected output type
+            ).alias(f"p-value_{i}")
+        )
+
 
     if (not keep_oob_error): df_pe = df_pe.drop('oob_e')
 
-    return df_pe
+
+    return df_pe.sort("id")
