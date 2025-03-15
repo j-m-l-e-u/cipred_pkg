@@ -2,22 +2,20 @@
 
 Non-parametric error prediction with random forest model in python.
 
+What is new: Now Multi-input / Multi-output
+
 [![DOI](https://zenodo.org/badge/605932757.svg)](https://zenodo.org/badge/latestdoi/605932757)
 
-## install from Pypi
-```bash
-pip install cipred
-```
 
 ## install from source
 ```bash
 cd /tmp
 git clone https://github.com/j-m-l-e-u/cipred_pkg.git
 cd cipred_pkg
-pip3 install .
+pip3 install -e . 
 ```
 
-Package `cipred` has been tested on python 3.8 and 3.9
+Package `cipred` has been tested on python 3.10
 
 ## References
 
