@@ -1,0 +1,11 @@
+polars~=0.20.31
+numpy~=1.23.2
+scikit-learn~=1.2.2
+
+[example]
+ipython
+jupyter
+os
+matplotlib
+pandas
+pyarrow

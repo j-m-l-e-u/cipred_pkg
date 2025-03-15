@@ -1,0 +1,55 @@
+Metadata-Version: 2.2
+Name: cipred
+Version: 0.3
+Summary: Non-parametric error prediction with random forest model.
+Home-page: https://github.com/j-m-l-e-u/cipred_pkg
+Author: Jean-Marie Lepioufle
+Author-email: Jean-Marie Lepioufle <jm@jeanmarie.eu>
+License: MIT + Copyright Jean-Marie Lepioufle
+Project-URL: Homepage, https://github.com/j-m-l-e-u/cipred_pkg
+Classifier: Programming Language :: Python :: 3
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: polars~=0.20.31
+Requires-Dist: numpy~=1.23.2
+Requires-Dist: scikit-learn~=1.2.2
+Provides-Extra: example
+Requires-Dist: ipython; extra == "example"
+Requires-Dist: jupyter; extra == "example"
+Requires-Dist: os; extra == "example"
+Requires-Dist: matplotlib; extra == "example"
+Requires-Dist: pandas; extra == "example"
+Requires-Dist: pyarrow; extra == "example"
+Dynamic: author
+Dynamic: home-page
+Dynamic: requires-python
+
+# cipred
+
+Non-parametric error prediction with random forest model in python.
+
+What is new: Now Multi-input / Multi-output
+
+[![DOI](https://zenodo.org/badge/605932757.svg)](https://zenodo.org/badge/latestdoi/605932757)
+
+
+## install from source
+```bash
+cd /tmp
+git clone https://github.com/j-m-l-e-u/cipred_pkg.git
+cd cipred_pkg
+pip3 install -e . 
+```
+
+Package `cipred` has been tested on python 3.10
+
+## References
+
+- [A Unified Framework for Random Forest Prediction Error Estimation](https://www.jmlr.org/papers/volume22/18-558/18-558.pdf), and
+
+- [Error Prediction of Air Quality at Monitoring Stations Using Random Forest in a Total Error Framework](https://www.mdpi.com/1424-8220/21/6/2160/htm).
+
+## For R users
+
+Please use the R-package [forestError](https://github.com/benjilu/forestError).
